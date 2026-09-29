@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EduGenie</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="container">
+    <h1>🎓 EduGenie</h1>
+    <p class="tag">Gemini-powered learning assistant</p>
+
+    <form id="form">
+      <label for="task">Task</label>
+      <select id="task">
+        <option value="/qa">Ask a Question (QnA)</option>
+        <option value="/explain">Explain a Concept</option>
+        <option value="/quiz">Generate Quiz</option>
+        <option value="/summarize">Summarize</option>
+        <option value="/learn/recommendations">Recommend Learning Path</option>
+      </select>
+
+      <label for="text">Your input</label>
+      <textarea id="text" rows="6" placeholder="Type a question, topic or passage..."></textarea>
+      <button type="submit" id="btn">Submit</button>
+    </form>
+
+    <section id="result" class="hidden"></section>
+  </main>
+
+<script>
+const form = document.getElementById("form");
+const result = document.getElementById("result");
+const btn = document.getElementById("btn");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = document.getElementById("text").value.trim();
+  if (!text) return;
+  const url = document.getElementById("task").value;
+  btn.disabled = true; btn.textContent = "Thinking...";
+  result.className = ""; result.textContent = "Working on it...";
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text})
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || "Request failed");
+    url === "/quiz" ? renderQuiz(data.result) : (result.textContent = data.result);
+  } catch (err) {
+    result.className = "error"; result.textContent = "Error: " + err.message;
+  }
+  btn.disabled = false; btn.textContent = "Submit";
+});
+
+function renderQuiz(qs) {
+  result.textContent = "";
+  qs.forEach((q, i) => {
+    const box = document.createElement("div"); box.className = "q";
+    const h = document.createElement("strong"); h.textContent = (i + 1) + ". " + q.question;
+    const fb = document.createElement("div"); fb.className = "fb";
+    box.append(h);
+    let done = false;
+    q.options.forEach((opt) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "opt"; b.textContent = opt;
+      b.onclick = () => {
+        if (done) return; done = true;
+        const ok = opt === q.answer;
+        b.classList.add(ok ? "ok" : "bad");
+        fb.textContent = ok ? "✅ Correct!" : "❌ Wrong. Correct answer: " + q.answer;
+      };
+      box.append(b);
+    });
+    box.append(fb); result.append(box);
+  });
+}
+</script>
+</body>
+</html>
